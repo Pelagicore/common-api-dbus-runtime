@@ -17,8 +17,9 @@
 #include <tuple>
 #include <type_traits>
 
-#include <CommonAPI/types.h>
-#include <CommonAPI/Runtime.h>
+#include <CommonAPI/CommonAPI.h>
+
+#define COMMONAPI_INTERNAL_COMPILATION
 
 #include "commonapi/tests/TestInterfaceProxy.h"
 #include "commonapi/tests/TestInterfaceStubDefault.h"
@@ -31,15 +32,16 @@ class DBusMultipleConnectionTest: public ::testing::Test {
     virtual void SetUp() {
         proxyFactory = CommonAPI::Runtime::load()->createFactory();
         stubFactory = CommonAPI::Runtime::load()->createFactory();
+        servicePublisher = CommonAPI::Runtime::load()->getServicePublisher();
         ASSERT_TRUE((bool)proxyFactory);
         ASSERT_TRUE((bool)stubFactory);
 
         stub = std::make_shared<commonapi::tests::TestInterfaceStubDefault>();
-        bool serviceNameAcquired = stubFactory->registerService(stub, serviceAddress);
+        bool serviceNameAcquired = servicePublisher->registerService(stub, serviceAddress, stubFactory);
 
         for(unsigned int i = 0; !serviceNameAcquired && i < 100; i++) {
             usleep(10000);
-            serviceNameAcquired = stubFactory->registerService(stub, serviceAddress);
+            serviceNameAcquired = servicePublisher->registerService(stub, serviceAddress, stubFactory);
         }
         ASSERT_TRUE(serviceNameAcquired);
 
@@ -52,12 +54,13 @@ class DBusMultipleConnectionTest: public ::testing::Test {
     }
 
     virtual void TearDown() {
-    	stubFactory->unregisterService(serviceAddress);
+        servicePublisher->unregisterService(serviceAddress);
     	usleep(30000);
     }
 
     std::shared_ptr<CommonAPI::Factory> proxyFactory;
     std::shared_ptr<CommonAPI::Factory> stubFactory;
+    std::shared_ptr<CommonAPI::ServicePublisher> servicePublisher;
     std::shared_ptr<commonapi::tests::TestInterfaceStubDefault> stub;
     std::shared_ptr<commonapi::tests::TestInterfaceProxy<> > proxy;
 
@@ -131,9 +134,9 @@ TEST_F(DBusMultipleConnectionTest, SetAttributeBroadcast) {
 
 TEST_F(DBusMultipleConnectionTest, GetAttribute) {
     uint32_t v1;
-    CommonAPI::CallStatus stat;
-    proxy->getTestPredefinedTypeAttributeAttribute().getValue(stat, v1);
-    ASSERT_EQ(CommonAPI::CallStatus::SUCCESS, stat);
+    CommonAPI::CallStatus status;
+    proxy->getTestPredefinedTypeAttributeAttribute().getValue(status, v1);
+    ASSERT_EQ(CommonAPI::CallStatus::SUCCESS, status);
 }
 
 

@@ -4,6 +4,11 @@
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+#if !defined (COMMONAPI_INTERNAL_COMPILATION)
+#error "Only <CommonAPI/CommonAPI.h> can be included directly, this file may disappear or change contents."
+#endif
+
 #ifndef COMMONAPI_DBUS_DBUS_PROXY_CONNECTION_H_
 #define COMMONAPI_DBUS_DBUS_PROXY_CONNECTION_H_
 
@@ -11,7 +16,6 @@
 #include "DBusMessage.h"
 
 #include "DBusFunctionalHash.h"
-#include "DBusServiceStatusEvent.h"
 
 #include <CommonAPI/types.h>
 #include <CommonAPI/Attribute.h>
@@ -35,6 +39,7 @@ typedef std::function<void(const DBusMessage&)> DBusMessageHandler;
 class DBusDaemonProxy;
 class DBusServiceRegistry;
 class DBusObjectManager;
+class DBusProxy;
 
 
 class DBusProxyConnection {
@@ -85,15 +90,35 @@ class DBusProxyConnection {
             const std::string& interfaceName,
             const std::string& interfaceMemberName,
             const std::string& interfaceMemberSignature,
-            DBusSignalHandler* dbusSignalHandler) = 0;
+            DBusSignalHandler* dbusSignalHandler,
+            const bool justAddFilter = false) = 0;
 
-    virtual void removeSignalMemberHandler(const DBusSignalHandlerToken& dbusSignalHandlerToken) = 0;
+    virtual DBusSignalHandlerToken subscribeForSelectiveBroadcast(bool& subscriptionAccepted,
+                                                                  const std::string& objectPath,
+                                                                  const std::string& interfaceName,
+                                                                  const std::string& interfaceMemberName,
+                                                                  const std::string& interfaceMemberSignature,
+                                                                  DBusSignalHandler* dbusSignalHandler,
+                                                                  DBusProxy* callingProxy) = 0;
+
+    virtual void unsubsribeFromSelectiveBroadcast(const std::string& eventName,
+                                                  DBusProxyConnection::DBusSignalHandlerToken subscription,
+                                                  DBusProxy* callingProxy) = 0;
+    virtual bool removeSignalMemberHandler(const DBusSignalHandlerToken& dbusSignalHandlerToken) = 0;
+
+    virtual bool addObjectManagerSignalMemberHandler(const std::string& dbusBusName,
+                                                     DBusSignalHandler* dbusSignalHandler) = 0;
+    virtual bool removeObjectManagerSignalMemberHandler(const std::string& dbusBusName,
+                                                        DBusSignalHandler* dbusSignalHandler) = 0;
 
     virtual const std::shared_ptr<DBusServiceRegistry> getDBusServiceRegistry() = 0;
     virtual const std::shared_ptr<DBusObjectManager> getDBusObjectManager() = 0;
 
     virtual void registerObjectPath(const std::string& objectPath) = 0;
     virtual void unregisterObjectPath(const std::string& objectPath) = 0;
+
+    virtual bool requestServiceNameAndBlock(const std::string& serviceName) const = 0;
+    virtual bool releaseServiceName(const std::string& serviceName) const = 0;
 
     typedef std::function<bool(const DBusMessage&)> DBusObjectPathMessageHandler;
 

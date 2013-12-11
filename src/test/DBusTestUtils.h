@@ -5,14 +5,16 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#ifndef __DBUS_TEST_UTILS__
+#define __DBUS_TEST_UTILS__
+
 #include <dbus/dbus.h>
 #include <CommonAPI/DBus/DBusServiceRegistry.h>
-
+#include <CommonAPI/DBus/DBusMessage.h>
 
 inline char eliminateZeroes(char val) {
     return !val ? '0' : val;
 }
-
 
 inline void printLibdbusMessageBody(char* data, uint32_t fromByteIndex, uint32_t toByteIndex) {
 	for(int i = fromByteIndex; i < toByteIndex; i++) {
@@ -33,17 +35,22 @@ inline void printLibdbusMessage(DBusMessage* libdbusMessage) {
     printLibdbusMessage(libdbusMessage, 0, dbus_message_get_body_length(libdbusMessage));
 }
 
-inline std::string toString(CommonAPI::DBus::DBusServiceRegistry::DBusServiceState state) {
-    switch(state) {
-        case CommonAPI::DBus::DBusServiceRegistry::DBusServiceState::AVAILABLE:
+
+inline void printDBusMessage(CommonAPI::DBus::DBusMessage& dbusMessage) {
+    printLibdbusMessageBody(dbusMessage.getBodyData(), 0, dbusMessage.getBodyLength());
+}
+
+inline std::string toString(CommonAPI::DBus::DBusServiceRegistry::DBusRecordState dbusRecordState) {
+    switch(dbusRecordState) {
+        case CommonAPI::DBus::DBusServiceRegistry::DBusRecordState::AVAILABLE:
             return "AVAILABLE";
-        case CommonAPI::DBus::DBusServiceRegistry::DBusServiceState::NOT_AVAILABLE:
+        case CommonAPI::DBus::DBusServiceRegistry::DBusRecordState::NOT_AVAILABLE:
             return "NOT_AVAILABLE";
-        case CommonAPI::DBus::DBusServiceRegistry::DBusServiceState::RESOLVED:
+        case CommonAPI::DBus::DBusServiceRegistry::DBusRecordState::RESOLVED:
             return "RESOLVED";
-        case CommonAPI::DBus::DBusServiceRegistry::DBusServiceState::RESOLVING:
+        case CommonAPI::DBus::DBusServiceRegistry::DBusRecordState::RESOLVING:
             return "RESOLVING";
-        case CommonAPI::DBus::DBusServiceRegistry::DBusServiceState::UNKNOWN:
+        case CommonAPI::DBus::DBusServiceRegistry::DBusRecordState::UNKNOWN:
             return "UNKNOWN";
     }
 }
@@ -73,3 +80,4 @@ inline std::string toString(CommonAPI::CallStatus state) {
             return "SUCCESS";
     }
 }
+#endif //__DBUS_TEST_UTILS__

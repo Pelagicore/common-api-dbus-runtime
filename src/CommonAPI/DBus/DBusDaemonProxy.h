@@ -4,6 +4,11 @@
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+#if !defined (COMMONAPI_INTERNAL_COMPILATION)
+#error "Only <CommonAPI/CommonAPI.h> can be included directly, this file may disappear or change contents."
+#endif
+
 #ifndef COMMONAPI_DBUS_DBUS_DAEMON_PROXY_H_
 #define COMMONAPI_DBUS_DBUS_DAEMON_PROXY_H_
 
@@ -32,24 +37,27 @@ class StaticInterfaceVersionAttribute: public InterfaceVersionAttribute {
 
 class DBusDaemonProxy: public DBusProxyBase {
  public:
-	typedef Event<std::string, std::string, std::string> NameOwnerChangedEvent;
+    typedef Event<std::string, std::string, std::string> NameOwnerChangedEvent;
 
-	typedef std::unordered_map<std::string, int> PropertyDictStub;
-	typedef std::unordered_map<std::string, PropertyDictStub> InterfaceToPropertyDict;
-	typedef std::unordered_map<std::string, InterfaceToPropertyDict> DBusObjectToInterfaceDict;
+    typedef std::unordered_map<std::string, int> PropertyDictStub;
+    typedef std::unordered_map<std::string, PropertyDictStub> InterfaceToPropertyDict;
+    typedef std::unordered_map<std::string, InterfaceToPropertyDict> DBusObjectToInterfaceDict;
 
-	typedef std::function<void(const CommonAPI::CallStatus&, std::vector<std::string>)> ListNamesAsyncCallback;
-	typedef std::function<void(const CommonAPI::CallStatus&, bool)> NameHasOwnerAsyncCallback;
-	typedef std::function<void(const CommonAPI::CallStatus&, DBusObjectToInterfaceDict)> GetManagedObjectsAsyncCallback;
+    typedef std::function<void(const CommonAPI::CallStatus&, std::vector<std::string>)> ListNamesAsyncCallback;
+    typedef std::function<void(const CommonAPI::CallStatus&, bool)> NameHasOwnerAsyncCallback;
+    typedef std::function<void(const CommonAPI::CallStatus&, DBusObjectToInterfaceDict)> GetManagedObjectsAsyncCallback;
+    typedef std::function<void(const CommonAPI::CallStatus&, std::string)> GetNameOwnerAsyncCallback;
 
+    DBusDaemonProxy(const std::shared_ptr<DBusProxyConnection>& dbusConnection);
 
-	DBusDaemonProxy(const std::shared_ptr<DBusProxyConnection>& dbusConnection);
+    virtual bool isAvailable() const;
+    virtual bool isAvailableBlocking() const;
+    virtual ProxyStatusEvent& getProxyStatusEvent();
+    virtual InterfaceVersionAttribute& getInterfaceVersionAttribute();
 
-	virtual bool isAvailable() const;
-	virtual ProxyStatusEvent& getProxyStatusEvent();
-	virtual InterfaceVersionAttribute& getInterfaceVersionAttribute();
+    void init();
 
-	static inline const char* getInterfaceId();
+    static inline const char* getInterfaceId();
 
     NameOwnerChangedEvent& getNameOwnerChangedEvent();
 
@@ -57,9 +65,21 @@ class DBusDaemonProxy: public DBusProxyBase {
     std::future<CallStatus> listNamesAsync(ListNamesAsyncCallback listNamesAsyncCallback) const;
 
     void nameHasOwner(const std::string& busName, CommonAPI::CallStatus& callStatus, bool& hasOwner) const;
-    std::future<CallStatus> nameHasOwnerAsync(const std::string& busName, NameHasOwnerAsyncCallback nameHasOwnerAsyncCallback) const;
+    std::future<CallStatus> nameHasOwnerAsync(const std::string& busName,
+                                              NameHasOwnerAsyncCallback nameHasOwnerAsyncCallback) const;
 
-    std::future<CallStatus> getManagedObjectsAsync(const std::string& forDBusServiceName, GetManagedObjectsAsyncCallback) const;
+    std::future<CallStatus> getManagedObjectsAsync(const std::string& forDBusServiceName,
+                                                   GetManagedObjectsAsyncCallback) const;
+
+    /**
+     * Get the unique connection/bus name of the primary owner of the name given
+     *
+     * @param busName Name to get the owner of
+     * @param getNameOwnerAsyncCallback callback functor
+     *
+     * @return CallStatus::REMOTE_ERROR if the name is unknown, otherwise CallStatus::SUCCESS and the uniq name of the owner
+     */
+    std::future<CallStatus> getNameOwnerAsync(const std::string& busName, GetNameOwnerAsyncCallback getNameOwnerAsyncCallback) const;
 
     virtual std::string getAddress() const;
     virtual const std::string& getDomain() const;
@@ -72,16 +92,12 @@ class DBusDaemonProxy: public DBusProxyBase {
 
  private:
     DBusEvent<NameOwnerChangedEvent> nameOwnerChangedEvent_;
-    static StaticInterfaceVersionAttribute interfaceVersionAttribute_;
-
-    static const std::string dbusBusName_;
-    static const std::string dbusObjectPath_;
-    static const std::string commonApiParticipantId_;
-    static const std::string dbusInterfaceName_;
+    StaticInterfaceVersionAttribute interfaceVersionAttribute_;
 };
 
 const char* DBusDaemonProxy::getInterfaceId() {
-    return "org.freedesktop.DBus";
+    static const char interfaceId[] = "org.freedesktop.DBus";
+    return interfaceId;
 }
 
 } // namespace DBus

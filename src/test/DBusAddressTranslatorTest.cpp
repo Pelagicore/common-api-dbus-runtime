@@ -11,13 +11,12 @@
 #include <thread>
 #include <unistd.h>
 
+#include <CommonAPI/CommonAPI.h>
+
+#define COMMONAPI_INTERNAL_COMPILATION
+
 #include <CommonAPI/DBus/DBusAddressTranslator.h>
 #include <CommonAPI/DBus/DBusUtils.h>
-
-#include <CommonAPI/types.h>
-#include <CommonAPI/AttributeExtension.h>
-#include <CommonAPI/Runtime.h>
-
 #include <CommonAPI/DBus/DBusConnection.h>
 #include <CommonAPI/DBus/DBusProxy.h>
 #include <CommonAPI/DBus/DBusRuntime.h>
@@ -28,7 +27,7 @@
 #include "commonapi/tests/TestInterfaceStubDefault.h"
 #include "commonapi/tests/TestInterfaceDBusStubAdapter.h"
 
-#include "fakeLegacyService/fake/legacy/service/LegacyInterfaceProxy.h"
+#include <fake/legacy/service/LegacyInterfaceProxy.h>
 
 
 static const std::vector<std::string> commonApiAddresses = {
@@ -44,6 +43,17 @@ static const std::vector<std::string> commonApiAddresses = {
 };
 
 static const std::string fileString =
+""
+"[not#a$valid/address]\n"
+"[]\n"
+"   98t3hpgjvqpvnü0 t4b+qßk4 kv+üg4krgv+ß4krgv+ßkr\n"
+"[too.short:address]\n"
+"[incomplete:address:]\n"
+"[:address:incomplete]\n"
+"[]đwqervqerverver\n"
+"[too:long:address:here]\n"
+"jfgv2nqp3 riqpnvi39r[]"
+"\n"
 "[local:no.nothing.service:no.nothing.instance]\n"
 "\n"
 "[local:service:instance]\n"
@@ -98,7 +108,7 @@ public:
     }
 
     virtual void SetUp() {
-        configFileName_ = CommonAPI::DBus::getCurrentBinaryFileFQN();
+        configFileName_ = CommonAPI::getCurrentBinaryFileFQN();
         configFileName_ += CommonAPI::DBus::DBUS_CONFIG_SUFFIX;
         std::ofstream configFile(configFileName_);
         ASSERT_TRUE(configFile.is_open());
@@ -169,14 +179,16 @@ TEST_F(AddressTranslatorTest, ServicesUsingPredefinedAddressesCanCommunicate) {
     std::shared_ptr<CommonAPI::Factory> stubFactory = runtime->createFactory();
     ASSERT_TRUE((bool)stubFactory);
 
+    std::shared_ptr<CommonAPI::ServicePublisher> servicePublisher = runtime->getServicePublisher();
+
     auto defaultTestProxy = proxyFactory->buildProxy<commonapi::tests::TestInterfaceProxy>(commonApiAddresses[0]);
     ASSERT_TRUE((bool)defaultTestProxy);
 
     auto stub = std::make_shared<commonapi::tests::TestInterfaceStubDefault>();
 
-    bool serviceNameAcquired = stubFactory->registerService(stub, commonApiAddresses[0]);
+    bool serviceNameAcquired = servicePublisher->registerService(stub, commonApiAddresses[0], stubFactory);
     for(unsigned int i = 0; !serviceNameAcquired && i < 100; i++) {
-        serviceNameAcquired = stubFactory->registerService(stub, commonApiAddresses[0]);
+        serviceNameAcquired = servicePublisher->registerService(stub, commonApiAddresses[0], stubFactory);
         usleep(10000);
     }
     ASSERT_TRUE(serviceNameAcquired);
@@ -193,7 +205,7 @@ TEST_F(AddressTranslatorTest, ServicesUsingPredefinedAddressesCanCommunicate) {
 
     ASSERT_EQ(stat, CommonAPI::CallStatus::SUCCESS);
 
-    stubFactory->unregisterService(commonApiAddresses[0]);
+    servicePublisher->unregisterService(commonApiAddresses[0]);
 }
 
 

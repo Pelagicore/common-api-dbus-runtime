@@ -1,6 +1,6 @@
 AC_PREREQ([2.61])
 AC_INIT([GENIVI Common API DBus C++ Library],
-        [2.0],
+        [2.1.4],
         [],
         [CommonAPI-DBus])
 
@@ -21,6 +21,9 @@ AM_INIT_AUTOMAKE([foreign 1.11 silent-rules subdir-objects color-tests -Wall -We
 AM_SILENT_RULES
 AM_MAINTAINER_MODE
 
+COMMONAPI_API_HEADER_VERSION="2.1"
+AC_SUBST(COMMONAPI_API_HEADER_VERSION)
+
 AC_PROG_CXX
 AC_LANG([C++])
 AX_CXX_COMPILE_STDCXX_11([noext])
@@ -31,7 +34,7 @@ LT_PREREQ(2.2)
 LT_INIT
 
 PKG_PROG_PKG_CONFIG
-PKG_CHECK_MODULES(COMMONAPI, [CommonAPI >= 0.7])
+PKG_CHECK_MODULES(COMMONAPI, [CommonAPI = 2.1.4])
 PKG_CHECK_MODULES(DBUS, [dbus-1 >= 1.4.6])
 PKG_CHECK_MODULES(GLIB, [glib-2.0],
         [],

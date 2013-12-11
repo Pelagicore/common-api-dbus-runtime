@@ -4,6 +4,11 @@
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+#if !defined (COMMONAPI_INTERNAL_COMPILATION)
+#error "Only <CommonAPI/CommonAPI.h> can be included directly, this file may disappear or change contents."
+#endif
+
 #ifndef COMMONAPI_DBUS_DBUS_PROXY_BASE_H_
 #define COMMONAPI_DBUS_DBUS_PROXY_BASE_H_
 
@@ -37,14 +42,25 @@ class DBusProxyBase: public virtual CommonAPI::Proxy {
                                  const char* methodSignature = NULL) const;
 
     inline DBusProxyConnection::DBusSignalHandlerToken addSignalMemberHandler(
-    		const std::string& signalName,
-    		const std::string& signalSignature,
-    		DBusProxyConnection::DBusSignalHandler* dbusSignalHandler);
+            const std::string& signalName,
+            const std::string& signalSignature,
+            DBusProxyConnection::DBusSignalHandler* dbusSignalHandler,
+            const bool justAddFilter = false);
 
-    inline void removeSignalMemberHandler(const DBusProxyConnection::DBusSignalHandlerToken& dbusSignalHandlerToken);
+    inline DBusProxyConnection::DBusSignalHandlerToken addSignalMemberHandler(
+                const std::string& objectPath,
+                const std::string& interfaceName,
+                const std::string& signalName,
+                const std::string& signalSignature,
+                DBusProxyConnection::DBusSignalHandler* dbusSignalHandler,
+                const bool justAddFilter = false);
+
+    inline bool removeSignalMemberHandler(const DBusProxyConnection::DBusSignalHandlerToken& dbusSignalHandlerToken);
+
+    virtual void init() = 0;
 
  protected:
-    static const std::string commonApiDomain_;
+    const std::string commonApiDomain_;
 
  private:
     DBusProxyBase(const DBusProxyBase&) = delete;
@@ -59,18 +75,37 @@ const std::shared_ptr<DBusProxyConnection>& DBusProxyBase::getDBusConnection() c
 DBusProxyConnection::DBusSignalHandlerToken DBusProxyBase::addSignalMemberHandler(
         const std::string& signalName,
         const std::string& signalSignature,
-        DBusProxyConnection::DBusSignalHandler* dbusSignalHandler) {
-    return dbusConnection_->addSignalMemberHandler(
+        DBusProxyConnection::DBusSignalHandler* dbusSignalHandler,
+        const bool justAddFilter) {
+    return addSignalMemberHandler(
             getDBusObjectPath(),
             getInterfaceName(),
             signalName,
             signalSignature,
-            dbusSignalHandler);
+            dbusSignalHandler,
+            justAddFilter);
 }
 
-void DBusProxyBase::removeSignalMemberHandler(const DBusProxyConnection::DBusSignalHandlerToken& dbusSignalHandlerToken) {
+DBusProxyConnection::DBusSignalHandlerToken DBusProxyBase::addSignalMemberHandler(
+                const std::string& objectPath,
+                const std::string& interfaceName,
+                const std::string& signalName,
+                const std::string& signalSignature,
+                DBusProxyConnection::DBusSignalHandler* dbusSignalHandler,
+                const bool justAddFilter) {
+    return dbusConnection_->addSignalMemberHandler(
+                objectPath,
+                interfaceName,
+                signalName,
+                signalSignature,
+                dbusSignalHandler,
+                justAddFilter);
+}
+
+bool DBusProxyBase::removeSignalMemberHandler(const DBusProxyConnection::DBusSignalHandlerToken& dbusSignalHandlerToken) {
     return dbusConnection_->removeSignalMemberHandler(dbusSignalHandlerToken);
 }
+
 
 } // namespace DBus
 } // namespace CommonAPI

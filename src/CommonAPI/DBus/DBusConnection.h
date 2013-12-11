@@ -4,6 +4,11 @@
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+#if !defined (COMMONAPI_INTERNAL_COMPILATION)
+#error "Only <CommonAPI/CommonAPI.h> can be included directly, this file may disappear or change contents."
+#endif
+
 #ifndef COMMONAPI_DBUS_DBUS_CONNECTION_H_
 #define COMMONAPI_DBUS_DBUS_CONNECTION_H_
 
@@ -12,8 +17,12 @@
 #include "DBusServiceRegistry.h"
 #include "DBusObjectManager.h"
 #include "DBusMainLoopContext.h"
+#include "DBusConnectionBusType.h"
 
 #include <dbus/dbus.h>
+
+#include <atomic>
+
 
 namespace CommonAPI {
 namespace DBus {
@@ -43,16 +52,9 @@ struct WatchContext {
 
 class DBusConnection: public DBusProxyConnection, public std::enable_shared_from_this<DBusConnection> {
  public:
-    enum BusType {
-        SESSION = DBUS_BUS_SESSION,
-        SYSTEM = DBUS_BUS_SYSTEM,
-        STARTER = DBUS_BUS_STARTER,
-        WRAPPED
-    };
-
     DBusConnection(BusType busType);
 
-    inline static std::shared_ptr<DBusConnection> getBus(const BusType& busType);
+    inline static std::shared_ptr<DBusConnection> getBus(const BusType& dbusBusType);
     inline static std::shared_ptr<DBusConnection> wrapLibDBus(::DBusConnection* libDbusConnection);
     inline static std::shared_ptr<DBusConnection> getSessionBus();
     inline static std::shared_ptr<DBusConnection> getSystemBus();
@@ -87,20 +89,37 @@ class DBusConnection: public DBusProxyConnection, public std::enable_shared_from
             int timeoutMilliseconds = kDefaultSendTimeoutMs) const;
 
     DBusMessage sendDBusMessageWithReplyAndBlock(const DBusMessage& dbusMessage,
-            DBusError& dbusError,
-            int timeoutMilliseconds = kDefaultSendTimeoutMs) const;
+                                                 DBusError& dbusError,
+                                                 int timeoutMilliseconds = kDefaultSendTimeoutMs) const;
+
+    virtual bool addObjectManagerSignalMemberHandler(const std::string& dbusBusName,
+                                                     DBusSignalHandler* dbusSignalHandler);
+    virtual bool removeObjectManagerSignalMemberHandler(const std::string& dbusBusName,
+                                                        DBusSignalHandler* dbusSignalHandler);
 
     DBusSignalHandlerToken addSignalMemberHandler(const std::string& objectPath,
-            const std::string& interfaceName,
-            const std::string& interfaceMemberName,
-            const std::string& interfaceMemberSignature,
-            DBusSignalHandler* dbusSignalHandler);
+                                                  const std::string& interfaceName,
+                                                  const std::string& interfaceMemberName,
+                                                  const std::string& interfaceMemberSignature,
+                                                  DBusSignalHandler* dbusSignalHandler,
+                                                  const bool justAddFilter = false);
+
+    DBusProxyConnection::DBusSignalHandlerToken subscribeForSelectiveBroadcast(bool& subscriptionAccepted,
+                                                                               const std::string& objectPath,
+                                                                               const std::string& interfaceName,
+                                                                               const std::string& interfaceMemberName,
+                                                                               const std::string& interfaceMemberSignature,
+                                                                               DBusSignalHandler* dbusSignalHandler,
+                                                                               DBusProxy* callingProxy);
+
+    void unsubsribeFromSelectiveBroadcast(const std::string& eventName,
+                                          DBusProxyConnection::DBusSignalHandlerToken subscription,
+                                          DBusProxy* callingProxy);
 
     void registerObjectPath(const std::string& objectPath);
     void unregisterObjectPath(const std::string& objectPath);
 
-    void removeSignalMemberHandler(const DBusSignalHandlerToken& dbusSignalHandlerToken);
-
+    bool removeSignalMemberHandler(const DBusSignalHandlerToken& dbusSignalHandlerToken);
     bool readWriteDispatch(int timeoutMilliseconds = -1);
 
     virtual const std::shared_ptr<DBusServiceRegistry> getDBusServiceRegistry();
@@ -114,8 +133,11 @@ class DBusConnection: public DBusProxyConnection, public std::enable_shared_from
     bool isDispatchReady();
     bool singleDispatch();
 
+    typedef std::tuple<std::string, std::string, std::string> DBusSignalMatchRuleTuple;
+    typedef std::pair<uint32_t, std::string> DBusSignalMatchRuleMapping;
+    typedef std::unordered_map<DBusSignalMatchRuleTuple, DBusSignalMatchRuleMapping> DBusSignalMatchRulesMap;
  private:
-    void dispatch(std::shared_ptr<DBusConnection> selfReference);
+    void dispatch();
     void suspendDispatching() const;
     void resumeDispatching() const;
 
@@ -131,7 +153,8 @@ class DBusConnection: public DBusProxyConnection, public std::enable_shared_from
 
     void addLibdbusSignalMatchRule(const std::string& objectPath,
             const std::string& interfaceName,
-            const std::string& interfaceMemberName);
+            const std::string& interfaceMemberName,
+            const bool justAddFilter = false);
 
     void removeLibdbusSignalMatchRule(const std::string& objectPath,
             const std::string& interfaceName,
@@ -164,8 +187,11 @@ class DBusConnection: public DBusProxyConnection, public std::enable_shared_from
 
     static void onWakeupMainContext(void* data);
 
+    void enforceAsynchronousTimeouts() const;
+    static const DBusObjectPathVTable* getDBusObjectPathVTable();
+
     ::DBusConnection* libdbusConnection_;
-    std::mutex libdbusConnectionGuard_;
+    mutable std::mutex libdbusConnectionGuard_;
     std::mutex signalGuard_;
     std::mutex objectManagerGuard_;
     std::mutex serviceRegistryGuard_;
@@ -177,20 +203,34 @@ class DBusConnection: public DBusProxyConnection, public std::enable_shared_from
 
     DBusConnectionStatusEvent dbusConnectionStatusEvent_;
 
-    typedef std::tuple<std::string, std::string, std::string> DBusSignalMatchRuleTuple;
-    typedef std::pair<uint32_t, std::string> DBusSignalMatchRuleMapping;
-    typedef std::unordered_map<DBusSignalMatchRuleTuple, DBusSignalMatchRuleMapping> DBusSignalMatchRulesMap;
     DBusSignalMatchRulesMap dbusSignalMatchRulesMap_;
 
     DBusSignalHandlerTable dbusSignalHandlerTable_;
+
+    std::unordered_map<std::string, size_t> dbusObjectManagerSignalMatchRulesMap_;
+    std::unordered_multimap<std::string, DBusSignalHandler*> dbusObjectManagerSignalHandlerTable_;
+    std::mutex dbusObjectManagerSignalGuard_;
+
+    bool addObjectManagerSignalMatchRule(const std::string& dbusBusName);
+    bool removeObjectManagerSignalMatchRule(const std::string& dbusBusName);
+
+    bool addLibdbusSignalMatchRule(const std::string& dbusMatchRule);
+    bool removeLibdbusSignalMatchRule(const std::string& dbusMatchRule);
+
+    std::atomic_size_t libdbusSignalMatchRulesCount_;
 
     // objectPath, referenceCount
     typedef std::unordered_map<std::string, uint32_t> LibdbusRegisteredObjectPathHandlersTable;
     LibdbusRegisteredObjectPathHandlersTable libdbusRegisteredObjectPaths_;
 
-    static DBusObjectPathVTable libdbusObjectPathVTable_;
-
     DBusObjectPathMessageHandler dbusObjectMessageHandler_;
+
+    mutable std::unordered_map<std::string, uint16_t> connectionNameCount_;
+
+    typedef std::pair<DBusPendingCall*, std::tuple<int, DBusMessageReplyAsyncHandler*, DBusMessage> > TimeoutMapElement;
+    mutable std::map<DBusPendingCall*, std::tuple<int, DBusMessageReplyAsyncHandler*, DBusMessage>> timeoutMap_;
+    mutable std::shared_ptr<std::thread> enforcerThread_;
+    mutable std::mutex enforceTimeoutMutex_;
 };
 
 std::shared_ptr<DBusConnection> DBusConnection::getBus(const BusType& busType) {

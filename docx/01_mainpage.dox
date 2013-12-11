@@ -1,0 +1,32 @@
+/**
+ * Copyright (C) 2013 BMW AG
+ *
+ *
+ * This file is part of GENIVI Project CommonAPI-D-Bus.
+ *
+ * Contributions are licensed to the GENIVI Alliance under one or more
+ * Contribution License Agreements.
+ *
+ * \copyright
+ * This Source Code Form is subject to the terms of the
+ * Mozilla Public License, v. 2.0. If a  copy of the MPL was not distributed with
+ * this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * \author Juergen Gehring (juergen.gehring@bmw.de)
+ * \author Manfred Bathelt (manfred.bathelt@bmw.de)
+ *
+ */
+ 
+/*!
+\mainpage
+
+\par Usage information
+can be found in the <a href="README.html">README file</a>.
+
+\par More information
+can be found at http://projects.genivi.org/commonapi/ \n
+
+\par About CommonAPI-D-Bus
+This is the D-Bus binding for CommonAPI.
+
+*/

@@ -7,6 +7,8 @@
 #include "DBusStubAdapter.h"
 #include "DBusUtils.h"
 
+#include <CommonAPI/utils.h>
+
 #include <cassert>
 #include <functional>
 #include <sstream>
@@ -16,11 +18,14 @@ namespace DBus {
 
 const std::string DBusStubAdapter::domain_ = "local";
 
-DBusStubAdapter::DBusStubAdapter(const std::string& commonApiAddress,
+DBusStubAdapter::DBusStubAdapter(const std::shared_ptr<DBusFactory>& factory,
+                                 const std::string& commonApiAddress,
                                  const std::string& dbusInterfaceName,
                                  const std::string& dbusBusName,
                                  const std::string& dbusObjectPath,
-                                 const std::shared_ptr<DBusProxyConnection>& dbusConnection) :
+                                 const std::shared_ptr<DBusProxyConnection>& dbusConnection,
+                                 const bool isManagingInterface) :
+                factory_(factory),
                 commonApiDomain_(split(commonApiAddress, ':')[0]),
                 commonApiServiceId_(split(commonApiAddress, ':')[1]),
                 commonApiParticipantId_(split(commonApiAddress, ':')[2]),
@@ -28,7 +33,7 @@ DBusStubAdapter::DBusStubAdapter(const std::string& commonApiAddress,
                 dbusBusName_(dbusBusName),
                 dbusObjectPath_(dbusObjectPath),
                 dbusConnection_(dbusConnection),
-                isInitialized_(false) {
+                isManagingInterface_(isManagingInterface) {
 
     assert(!dbusBusName_.empty());
     assert(!dbusInterfaceName_.empty());
@@ -39,25 +44,13 @@ DBusStubAdapter::DBusStubAdapter(const std::string& commonApiAddress,
 }
 
 DBusStubAdapter::~DBusStubAdapter() {
-	deinit();
-}
-
-void DBusStubAdapter::deinit() {
-	assert(dbusConnection_);
-
-	if (isInitialized_) {
-		dbusConnection_->getDBusObjectManager()->unregisterDBusStubAdapter(dbusInterfaceHandlerToken_);
-		isInitialized_ = false;
-	}
+    deinit();
 }
 
 void DBusStubAdapter::init() {
-    dbusInterfaceHandlerToken_ = dbusConnection_->getDBusObjectManager()->registerDBusStubAdapter(
-                    dbusObjectPath_,
-                    dbusInterfaceName_,
-                    this);
+}
 
-    isInitialized_ = true;
+void DBusStubAdapter::deinit() {
 }
 
 const std::string DBusStubAdapter::getAddress() const {

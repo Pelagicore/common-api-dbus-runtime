@@ -4,6 +4,11 @@
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+#if !defined (COMMONAPI_INTERNAL_COMPILATION)
+#error "Only <CommonAPI/CommonAPI.h> can be included directly, this file may disappear or change contents."
+#endif
+
 #ifndef COMMONAPI_DBUS_DBUS_FUNCTIONAL_HASH_H_
 #define COMMONAPI_DBUS_DBUS_FUNCTIONAL_HASH_H_
 
@@ -37,26 +42,32 @@ struct hash< tuple<string, string, string> >:
 };
 
 template<>
-struct hash< tuple<string, string, string, bool> >:
-        public unary_function< tuple<string, string, string, bool>, size_t > {
+struct hash<tuple<string, string, string, bool> > :
+                public unary_function<tuple<string, string, string, bool>, size_t> {
 
     size_t operator()(const tuple<string, string, string, bool>& t) const;
 };
 
 template<>
-struct hash< tuple<string, string, string, string> >:
-		public std::unary_function< tuple<string, string, string, string>, size_t > {
+struct hash<tuple<string, string, string, int> > :
+                public unary_function<tuple<string, string, string, int>, size_t> {
 
-	size_t operator()(const tuple<string, string, string, string>& t) const;
+    size_t operator()(const tuple<string, string, string, int>& t) const;
 };
 
+template<>
+struct hash<tuple<string, string, string, string> > :
+                public std::unary_function<tuple<string, string, string, string>, size_t> {
+
+    size_t operator()(const tuple<string, string, string, string>& t) const;
+};
 
 template<>
-struct equal_to< pair<const char*, const char*> >: public binary_function< pair<const char*, const char*>,
-																									 pair<const char*, const char*>,
-																									 bool> {
+struct equal_to<pair<const char*, const char*> > : public binary_function<pair<const char*, const char*>,
+                pair<const char*, const char*>,
+                bool> {
 
-  bool operator()(const pair<const char*, const char*>& a, const pair<const char*, const char*>& b) const;
+    bool operator()(const pair<const char*, const char*>& a, const pair<const char*, const char*>& b) const;
 };
 
 } // namespace std

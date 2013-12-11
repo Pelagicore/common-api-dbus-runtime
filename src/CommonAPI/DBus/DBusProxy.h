@@ -4,12 +4,18 @@
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+#if !defined (COMMONAPI_INTERNAL_COMPILATION)
+#error "Only <CommonAPI/CommonAPI.h> can be included directly, this file may disappear or change contents."
+#endif
+
 #ifndef COMMONAPI_DBUS_DBUS_PROXY_H_
 #define COMMONAPI_DBUS_DBUS_PROXY_H_
 
 #include "DBusProxyBase.h"
 #include "DBusAttribute.h"
 #include "DBusServiceRegistry.h"
+#include "DBusFactory.h"
 
 #include <functional>
 #include <memory>
@@ -34,7 +40,8 @@ class DBusProxyStatusEvent: public ProxyStatusEvent {
 
 class DBusProxy: public DBusProxyBase {
  public:
-    DBusProxy(const std::string& commonApiAddress,
+    DBusProxy(const std::shared_ptr<DBusFactory>& factory,
+              const std::string& commonApiAddress,
               const std::string& dbusInterfaceName,
               const std::string& dbusBusName,
               const std::string& dbusObjectPath,
@@ -56,15 +63,24 @@ class DBusProxy: public DBusProxyBase {
     virtual const std::string& getDBusBusName() const;
     virtual const std::string& getDBusObjectPath() const;
     virtual const std::string& getInterfaceName() const;
+    DBusProxyConnection::DBusSignalHandlerToken subscribeForSelectiveBroadcastOnConnection(
+              bool& subscriptionAccepted,
+              const std::string& objectPath,
+              const std::string& interfaceName,
+              const std::string& interfaceMemberName,
+              const std::string& interfaceMemberSignature,
+              DBusProxyConnection::DBusSignalHandler* dbusSignalHandler);
+    void unsubsribeFromSelectiveBroadcast(const std::string& eventName,
+                                          DBusProxyConnection::DBusSignalHandlerToken subscription);
 
+    void init();
  private:
     DBusProxy(const DBusProxy&) = delete;
 
-    void onDBusServiceInstanceStatus(const AvailabilityStatus& availabilityStatus);
+    SubscriptionStatus onDBusServiceInstanceStatus(const AvailabilityStatus& availabilityStatus);
 
     DBusProxyStatusEvent dbusProxyStatusEvent_;
-    DBusServiceRegistry::Subscription dbusServiceRegistrySubscription_;
-    DBusServiceStatusEvent::Subscription dbusServiceStatusEventSubscription_;
+    DBusServiceRegistry::DBusServiceSubscription dbusServiceRegistrySubscription_;
     AvailabilityStatus availabilityStatus_;
 
     DBusReadonlyAttribute<InterfaceVersionAttribute> interfaceVersionAttribute_;
@@ -77,6 +93,8 @@ class DBusProxy: public DBusProxyBase {
     const std::string dbusBusName_;
     const std::string dbusObjectPath_;
     const std::string dbusInterfaceName_;
+
+    const std::shared_ptr<DBusFactory>& factory_;
 };
 
 
