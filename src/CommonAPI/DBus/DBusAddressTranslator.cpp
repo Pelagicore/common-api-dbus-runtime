@@ -128,14 +128,7 @@ void DBusAddressTranslator::findFallbackDBusAddress(const std::string& commonApi
     std::vector<std::string> parts = split(commonApiAddress, ':');
     interfaceName = parts[1];
     connectionName = parts[2];
-    auto objectNodePos = interfaceName.find(",");
-    if (objectNodePos != std::string::npos) {
-    	objectPath = interfaceName.substr(objectNodePos + strlen(","));
-    	interfaceName = interfaceName.substr(0, objectNodePos);
-    }
-    else
-    	objectPath = '/' + parts[2];
-
+    objectPath = '/' + parts[2];
     std::replace(objectPath.begin(), objectPath.end(), '.', '/');
 }
 

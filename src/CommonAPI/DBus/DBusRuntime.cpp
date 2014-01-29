@@ -54,15 +54,7 @@ std::shared_ptr<Factory> DBusRuntime::doCreateFactory(std::shared_ptr<MainLoopCo
             if (nullOnInvalidName) {
                 return std::shared_ptr<Factory>(NULL);
             } else {
-            	DBusFactoryConfig* dbusFactoryConfig_ = new DBusFactoryConfig();
-
-                if (factoryName == "dbus-session")
-            		dbusFactoryConfig_->busType_ = BusType::SESSION;
-
-				if (factoryName == "dbus-system")
-            		dbusFactoryConfig_->busType_ = BusType::SYSTEM;
-
-				dbusFactoryConfig = dbusFactoryConfig_;
+                dbusFactoryConfig = new DBusFactoryConfig();
             }
         }
 
