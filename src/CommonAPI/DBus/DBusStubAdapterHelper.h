@@ -176,7 +176,7 @@ template <
 class DBusMethodStubDispatcher<_StubClass, _In<_InArgs...> >: public DBusStubAdapterHelper<_StubClass>::StubDispatcher {
  public:
     typedef DBusStubAdapterHelper<_StubClass> DBusStubAdapterHelperType;
-    typedef void (_StubClass::*_StubFunctor)(std::shared_ptr<CommonAPI::ClientId>, const _InArgs&...);
+    typedef void (_StubClass::*_StubFunctor)(std::shared_ptr<CommonAPI::ClientId>, _InArgs...);
 
     DBusMethodStubDispatcher(_StubFunctor stubFunctor):
             stubFunctor_(stubFunctor) {
@@ -223,7 +223,7 @@ class DBusMethodWithReplyStubDispatcher<_StubClass, _In<_InArgs...>, _Out<_OutAr
             public DBusStubAdapterHelper<_StubClass>::StubDispatcher {
  public:
     typedef DBusStubAdapterHelper<_StubClass> DBusStubAdapterHelperType;
-    typedef void (_StubClass::*_StubFunctor)(std::shared_ptr<CommonAPI::ClientId>, const _InArgs&..., _OutArgs&...);
+    typedef void (_StubClass::*_StubFunctor)(std::shared_ptr<CommonAPI::ClientId>, _InArgs..., _OutArgs&...);
 
     DBusMethodWithReplyStubDispatcher(_StubFunctor stubFunctor, const char* dbusReplySignature):
             stubFunctor_(stubFunctor),
@@ -383,7 +383,7 @@ class DBusSetAttributeStubDispatcher: public DBusGetAttributeStubDispatcher<_Stu
     typedef typename DBusStubAdapterHelperType::RemoteEventHandlerType RemoteEventHandlerType;
 
     typedef typename DBusGetAttributeStubDispatcher<_StubClass, _AttributeType>::GetStubFunctor GetStubFunctor;
-    typedef bool (RemoteEventHandlerType::*OnRemoteSetFunctor)(std::shared_ptr<CommonAPI::ClientId>, const _AttributeType&);
+    typedef bool (RemoteEventHandlerType::*OnRemoteSetFunctor)(std::shared_ptr<CommonAPI::ClientId>, _AttributeType);
     typedef void (RemoteEventHandlerType::*OnRemoteChangedFunctor)();
 
     DBusSetAttributeStubDispatcher(GetStubFunctor getStubFunctor,
