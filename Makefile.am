@@ -14,6 +14,7 @@ AM_CPPFLAGS = \
         -I$(top_srcdir)/src/test \
         ${COMMONAPI_CFLAGS} \
         ${DBUS_CFLAGS} \
+        -I${DBUS_SOURCE_PATH} \
         -DCOMMONAPI_INTERNAL_COMPILATION \
         -DCOMMONAPI_DBUS_VERSION_MAJOR=${LIBCOMMONAPI_DBUS_CURRENT} \
         -DCOMMONAPI_DBUS_VERSION_MINOR=${LIBCOMMONAPI_DBUS_REVISION}
@@ -65,15 +66,18 @@ libCommonAPI_DBus_la_SOURCES = \
         src/CommonAPI/DBus/DBusRuntime.cpp \
         src/CommonAPI/DBus/DBusServicePublisher.cpp \
         src/CommonAPI/DBus/DBusServiceRegistry.cpp \
+        src/CommonAPI/DBus/dbus-custom-marshalling.cpp \
         src/CommonAPI/DBus/DBusStubAdapter.cpp
 
 libCommonAPI_DBus_la_LIBADD = \
         libmurmurhash-internal.la \
         libpugixml-internal.la \
+        ${DBUS_LIBDIR}/libdbus-1.a \
         ${COMMONAPI_LIBS}
 libCommonAPI_DBus_la_LDFLAGS = \
         ${AM_LDFLAGS} \
         -version-info ${LIBCOMMONAPI_DBUS_CURRENT}:${LIBCOMMONAPI_DBUS_REVISION}:${LIBCOMMONAPI_DBUS_AGE}
+
 
 CommonAPI_DBus_pugi_includedir=$(includedir)/CommonAPI-${COMMONAPI_API_HEADER_VERSION}/pugixml
 CommonAPI_DBus_pugi_include_HEADERS = \

@@ -66,6 +66,20 @@ AC_ARG_VAR([GTEST_LDFLAGS], [Linker path and option flags for Google Test.])
 AC_ARG_VAR([GTEST_LIBS], [Library linking flags for Google Test.])
 AC_ARG_VAR([GTEST_VERSION], [The available version of Google Test.])
 
+AC_ARG_VAR([DBUS_LIBDIR], [The path to the dbus static library (libdbus-1.a).])
+AS_IF([test "x$DBUS_LIBDIR" = x], [DBUS_LIBDIR="/usr/lib/i386-linux-gnu"])
+AS_IF([test -f "${DBUS_LIBDIR}/libdbus-1.a"], 
+[AC_MSG_NOTICE(DBus static library found in : ${DBUS_LIBDIR}/libdbus-1.a)], 
+[AC_MSG_ERROR(Can't find dbus static library. Please set the DBUS_LIBDIR parameter to the location where the file "libdbus-1.a" can be found)])
+
+AC_ARG_VAR([DBUS_SOURCE_PATH], [The path to the DBus source package which should match your system])
+AS_IF([test -f "${DBUS_SOURCE_PATH}/dbus/dbus-internals.h"], 
+[AC_MSG_NOTICE(DBus source code found in : ${DBUS_SOURCE_PATH}/dbus/dbus-internals.h)], 
+[AC_MSG_ERROR("Can not find dbus source code in "${DBUS_SOURCE_PATH}". Please set the DBUS_SOURCE_PATH parameter to the location where the source package of DBus can be found. To install that package on a Debian or Ubuntu system you can use the following command :
+\$ apt-get source dbus")]
+)
+
+
 AS_IF([test -f "${GTEST_CONFIG}"],
       [AS_IF([${GTEST_CONFIG} --min-version=${GTEST_MIN_VERSION}],
              [],
@@ -115,6 +129,8 @@ AC_MSG_RESULT([
 
         DBUS_CFLAGS:       ${DBUS_CFLAGS}
         DBUS_LIBS:         ${DBUS_LIBS}
+        DBUS_LIBDIR:       ${DBUS_LIBDIR}
+        DBUS_SOURCE_PATH:  ${DBUS_SOURCE_PATH}
 
         GTEST_CONFIG:      ${GTEST_CONFIG}
         GTEST_CPPFLAGS:    ${GTEST_CPPFLAGS}

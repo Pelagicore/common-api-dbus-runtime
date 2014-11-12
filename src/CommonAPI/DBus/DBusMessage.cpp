@@ -9,6 +9,9 @@
 #include <cassert>
 #include <cstring>
 
+#include "dbus-custom-marshalling.h"
+
+
 namespace CommonAPI {
 namespace DBus {
 
