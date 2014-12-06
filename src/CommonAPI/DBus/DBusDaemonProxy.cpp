@@ -38,8 +38,8 @@ static const std::string commonApiParticipantId_ = "org.freedesktop.DBus-/org/fr
 
 DBusDaemonProxy::DBusDaemonProxy(const std::shared_ptr<DBusProxyConnection>& dbusConnection):
                 DBusProxyBase(dbusConnection),
-                interfaceVersionAttribute_(1, 0),
-                nameOwnerChangedEvent_(*this, "NameOwnerChanged", "sss") {
+                nameOwnerChangedEvent_(*this, "NameOwnerChanged", "sss"),
+                interfaceVersionAttribute_(1, 0) {
 }
 
 void DBusDaemonProxy::init() {
@@ -199,6 +199,10 @@ std::future<CallStatus> DBusDaemonProxy::getNameOwnerAsync(const std::string& bu
                     2000);
 }
 
+const char* DBusDaemonProxy::getInterfaceId() {
+    static const char interfaceId[] = "org.freedesktop.DBus";
+    return interfaceId;
+}
 
 } // namespace DBus
 } // namespace CommonAPI

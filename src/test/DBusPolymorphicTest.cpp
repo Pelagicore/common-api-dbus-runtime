@@ -74,31 +74,6 @@ public:
         }
     }
 
-    void TestMapWithPolymorphicStructKeyMethod(const std::shared_ptr<CommonAPI::ClientId> clientId,
-                                               commonapi::tests::DerivedTypeCollection::MapPolymorphicToInt inMap) {
-        numberOfContainedElements_ = inMap.size();
-
-        auto mapIterator = inMap.begin();
-
-        if (mapIterator != inMap.end()) {
-            std::shared_ptr<commonapi::tests::DerivedTypeCollection::TestExtendedPolymorphicStruct> extended =
-                            std::dynamic_pointer_cast<
-                                            commonapi::tests::DerivedTypeCollection::TestExtendedPolymorphicStruct>(
-                                            mapIterator->first);
-            firstElementIsExtended_ = (extended != NULL);
-            mapIterator++;
-        }
-
-        if (mapIterator != inMap.end()) {
-            std::shared_ptr<commonapi::tests::DerivedTypeCollection::TestExtendedPolymorphicStruct> extended =
-                            std::dynamic_pointer_cast<
-                                            commonapi::tests::DerivedTypeCollection::TestExtendedPolymorphicStruct>(
-                                            mapIterator->first);
-            firstElementIsExtended_ = (extended != NULL);
-        }
-
-    }
-
     void TestStructWithPolymorphicMemberMethod(const std::shared_ptr<CommonAPI::ClientId> clientId,
                                                commonapi::tests::DerivedTypeCollection::StructWithPolymorphicMember inStruct) {
         if (inStruct.polymorphicMember != NULL) {
@@ -170,7 +145,7 @@ protected:
                         objectPath,
                         stubDBusConnection_,
                         testStub);
-        stubAdapter_->init();
+        stubAdapter_->init(stubAdapter_);
 
         const bool isStubAdapterRegistered = CommonAPI::DBus::DBusServicePublisher::getInstance()->registerService(
                         stubAdapter_);
@@ -275,7 +250,9 @@ TEST_F(PolymorphicTest, SendStructWithMapWithEnumKeyMember) {
     ASSERT_EQ(stat, CommonAPI::CallStatus::SUCCESS);
 }
 
+#ifndef WIN32
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
+#endif

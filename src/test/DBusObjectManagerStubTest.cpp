@@ -56,6 +56,10 @@ public:
         return false;
     }
 
+    virtual bool onInterfaceDBusFreedesktopPropertiesMessage(const CommonAPI::DBus::DBusMessage& dbusMessage) {
+        return false;
+    }
+
 protected:
     TestDBusStubAdapter(const std::shared_ptr<CommonAPI::DBus::DBusFactory> factory,
                         const std::string& dbusObjectPath,
@@ -140,10 +144,10 @@ struct TestDBusObjectManagerSignalHandler: public CommonAPI::DBus::DBusConnectio
 private:
     TestDBusObjectManagerSignalHandler(const std::string& dbusObjectPath,
                                        const std::shared_ptr<CommonAPI::DBus::DBusProxyConnection>& dbusConnection) :
-                    dbusObjectPath_(dbusObjectPath),
-                    dbusConnection_(dbusConnection),
                     totalAddedCount(0),
-                    totalRemovedCount(0) {
+                    totalRemovedCount(0),
+                    dbusObjectPath_(dbusObjectPath),
+                    dbusConnection_(dbusConnection) {
     }
 
     void init() {
@@ -184,6 +188,8 @@ protected:
     }
 
     virtual void TearDown() {
+        stubDBusConnection_->releaseServiceName(dbusServiceName);
+
         stubDBusConnection_->disconnect();
         stubDBusConnection_.reset();
 
@@ -279,7 +285,7 @@ protected:
 
             ASSERT_TRUE(bool(dbusStubAdapter[i]));
 
-            dbusStubAdapter[i]->init();
+            dbusStubAdapter[i]->init(dbusStubAdapter[i]);
         }
     }
 
@@ -349,7 +355,7 @@ TEST_F(DBusObjectManagerStubTest, RegisterManagerStubAdapterWorks) {
                     serviceFactory,
                     dbusObjectManagerStubPath,
                     stubDBusConnection_);
-    managerDBusStubAdapter->init();
+    managerDBusStubAdapter->init(managerDBusStubAdapter);
 
     ASSERT_TRUE(CommonAPI::DBus::DBusServicePublisher::getInstance()->registerService(managerDBusStubAdapter));
 
@@ -385,7 +391,7 @@ TEST_F(DBusObjectManagerStubTest, ManagerStubAdapterExportAndUnexportWorks) {
                     serviceFactory,
                     dbusObjectManagerStubPath,
                     stubDBusConnection_);
-    managerDBusStubAdapter->init();
+    managerDBusStubAdapter->init(managerDBusStubAdapter);
 
     ASSERT_TRUE(CommonAPI::DBus::DBusServicePublisher::getInstance()->registerService(managerDBusStubAdapter));
 
@@ -452,7 +458,7 @@ TEST_F(DBusObjectManagerStubTest, DestructorUnpublishingWorks) {
                     serviceFactory,
                     dbusObjectManagerStubPath,
                     stubDBusConnection_);
-    managerDBusStubAdapter->init();
+    managerDBusStubAdapter->init(managerDBusStubAdapter);
 
     EXPECT_TRUE(CommonAPI::DBus::DBusServicePublisher::getInstance()->registerService(managerDBusStubAdapter));
 
@@ -492,7 +498,9 @@ TEST_F(DBusObjectManagerStubTest, DestructorUnpublishingWorks) {
     ASSERT_TRUE(wasServiceDeregistrationSuccessful);
 }
 
+#ifndef WIN32
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
+#endif

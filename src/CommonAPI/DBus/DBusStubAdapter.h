@@ -39,7 +39,7 @@ class DBusStubAdapter: virtual public CommonAPI::StubAdapter, public DBusInterfa
 
     virtual ~DBusStubAdapter();
 
-    virtual void init();
+    virtual void init(std::shared_ptr<DBusStubAdapter> instance);
     virtual void deinit();
 
     virtual const std::string getAddress() const;
@@ -47,19 +47,20 @@ class DBusStubAdapter: virtual public CommonAPI::StubAdapter, public DBusInterfa
     virtual const std::string& getServiceId() const;
     virtual const std::string& getInstanceId() const;
 
-    inline const std::string& getDBusName() const;
-    inline const std::string& getObjectPath() const;
-    inline const std::string& getInterfaceName() const;
+    const std::string& getDBusName() const;
+    const std::string& getObjectPath() const;
+    const std::string& getInterfaceName() const;
 
-    inline const std::shared_ptr<DBusProxyConnection>& getDBusConnection() const;
+    const std::shared_ptr<DBusProxyConnection>& getDBusConnection() const;
 
-    inline const bool isManagingInterface();
+    const bool isManagingInterface();
 
     virtual const char* getMethodsDBusIntrospectionXmlData() const = 0;
     virtual bool onInterfaceDBusMessage(const DBusMessage& dbusMessage) = 0;
 
     virtual void deactivateManagedInstances() = 0;
-
+    virtual const bool hasFreedesktopProperties();
+    virtual bool onInterfaceDBusFreedesktopPropertiesMessage(const DBusMessage& dbusMessage) = 0;
  protected:
 
     const std::string commonApiDomain_;
@@ -78,26 +79,6 @@ class DBusStubAdapter: virtual public CommonAPI::StubAdapter, public DBusInterfa
     const bool isManagingInterface_;
 };
 
-
-const bool DBusStubAdapter::isManagingInterface() {
-    return isManagingInterface_;
-}
-
-const std::string& DBusStubAdapter::getDBusName() const {
-    return dbusBusName_;
-}
-
-const std::string& DBusStubAdapter::getObjectPath() const {
-    return dbusObjectPath_;
-}
-
-const std::string& DBusStubAdapter::getInterfaceName() const {
-    return dbusInterfaceName_;
-}
-
-const std::shared_ptr<DBusProxyConnection>& DBusStubAdapter::getDBusConnection() const {
-    return dbusConnection_;
-}
 
 } // namespace dbus
 } // namespace CommonAPI

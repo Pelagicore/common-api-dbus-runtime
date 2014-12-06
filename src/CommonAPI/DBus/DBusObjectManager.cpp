@@ -10,6 +10,8 @@
 #include "DBusOutputStream.h"
 #include "DBusUtils.h"
 
+#include "DBusFreedesktopPropertiesStub.h"
+
 #include <CommonAPI/utils.h>
 
 #include <dbus/dbus-protocol.h>
@@ -23,8 +25,8 @@ namespace CommonAPI {
 namespace DBus {
 
 DBusObjectManager::DBusObjectManager(const std::shared_ptr<DBusProxyConnection>& dbusConnection):
-        dbusConnection_(dbusConnection),
-        rootDBusObjectManagerStub_(new DBusObjectManagerStub("/", dbusConnection)) {
+                rootDBusObjectManagerStub_(new DBusObjectManagerStub("/", dbusConnection)),
+                dbusConnection_(dbusConnection){
 
     if (!dbusConnection->isObjectPathMessageHandlerSet()) {
         dbusConnection->setObjectPathMessageHandler(
@@ -53,6 +55,20 @@ bool DBusObjectManager::registerDBusStubAdapter(std::shared_ptr<DBusStubAdapter>
 
     objectPathLock_.lock();
     isRegistrationSuccessful = addDBusInterfaceHandler(dbusStubAdapterHandlerPath, dbusStubAdapter);
+
+    if(isRegistrationSuccessful && dbusStubAdapter->hasFreedesktopProperties()) {
+        const std::shared_ptr<DBusFreedesktopPropertiesStub> dbusFreedesktopPropertiesStub =
+                        std::make_shared<DBusFreedesktopPropertiesStub>(dbusStubAdapterObjectPath,
+                                                                        dbusStubAdapterInterfaceName,
+                                                                        dbusStubAdapter->getDBusConnection(),
+                                                                        dbusStubAdapter);
+        isRegistrationSuccessful = isRegistrationSuccessful
+                        && addDBusInterfaceHandler(
+                                        {dbusFreedesktopPropertiesStub->getDBusObjectPath(),
+                                         dbusFreedesktopPropertiesStub->getInterfaceName()
+                                        },
+                                        dbusFreedesktopPropertiesStub);
+    }
 
     if (isRegistrationSuccessful && dbusStubAdapter->isManagingInterface()) {
         auto managerStubIterator = managerStubs_.find(dbusStubAdapterObjectPath);
@@ -252,7 +268,6 @@ bool DBusObjectManager::onIntrospectableInterfaceDBusMessage(const DBusMessage& 
                             << dbusStubAdapterBase->getMethodsDBusIntrospectionXmlData() << "\n"
                             "</interface>\n";
             nodeSet.insert(elems.back());
-            //break;
         } else {
             if (dbusMessage.hasObjectPath("/") && elems.size() > 1) {
                 if (nodeSet.find(elems[1]) == nodeSet.end()) {
@@ -267,9 +282,9 @@ bool DBusObjectManager::onIntrospectableInterfaceDBusMessage(const DBusMessage& 
                     foundRegisteredObjects = true;
                 }
             } else {
-                for (int i = 1; i < elems.size() - 1; i++) {
+                for (unsigned int i = 1; i < elems.size() - 1; i++) {
                     std::string build;
-                    for (int j = 1; j <= i; j++) {
+                    for (unsigned int j = 1; j <= i; j++) {
                         build = build + "/" + elems[j];
                         if (dbusMessage.hasObjectPath(build)) {
                             if (nodeSet.find(elems[j + 1]) == nodeSet.end()) {
@@ -305,6 +320,11 @@ bool DBusObjectManager::onIntrospectableInterfaceDBusMessage(const DBusMessage& 
     }
 
     return false;
+}
+
+
+std::shared_ptr<DBusObjectManagerStub> DBusObjectManager::getRootDBusObjectManagerStub() {
+    return rootDBusObjectManagerStub_;
 }
 
 } // namespace DBus

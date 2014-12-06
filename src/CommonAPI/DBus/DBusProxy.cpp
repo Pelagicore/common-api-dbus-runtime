@@ -36,16 +36,16 @@ DBusProxy::DBusProxy(const std::shared_ptr<DBusFactory>& factory,
                      const std::string& dbusObjectPath,
                      const std::shared_ptr<DBusProxyConnection>& dbusConnection):
                 DBusProxyBase(dbusConnection),
-                factory_(factory),
+                dbusProxyStatusEvent_(this),
+                availabilityStatus_(AvailabilityStatus::UNKNOWN),
+                interfaceVersionAttribute_(*this, "uu", "getInterfaceVersion"),
+                dbusServiceRegistry_(dbusConnection->getDBusServiceRegistry()),
                 commonApiServiceId_(split(commonApiAddress, ':')[1]),
                 commonApiParticipantId_(split(commonApiAddress, ':')[2]),
                 dbusBusName_(dbusBusName),
                 dbusObjectPath_(dbusObjectPath),
                 dbusInterfaceName_(dbusInterfaceName),
-                dbusProxyStatusEvent_(this),
-                availabilityStatus_(AvailabilityStatus::UNKNOWN),
-                interfaceVersionAttribute_(*this, "getInterfaceVersion", "uu"),
-                dbusServiceRegistry_(dbusConnection->getDBusServiceRegistry()) {
+                factory_(factory) {
 }
 
 void DBusProxy::init() {
@@ -139,9 +139,10 @@ DBusProxyConnection::DBusSignalHandlerToken DBusProxy::subscribeForSelectiveBroa
                     this);
 }
 
-void DBusProxy::unsubsribeFromSelectiveBroadcast(const std::string& eventName,
-                                                 DBusProxyConnection::DBusSignalHandlerToken subscription) {
-    getDBusConnection()->unsubsribeFromSelectiveBroadcast(eventName, subscription, this);
+void DBusProxy::unsubscribeFromSelectiveBroadcast(const std::string& eventName,
+                                                 DBusProxyConnection::DBusSignalHandlerToken subscription,
+                                                 const DBusProxyConnection::DBusSignalHandler* dbusSignalHandler) {
+    getDBusConnection()->unsubscribeFromSelectiveBroadcast(eventName, subscription, this, dbusSignalHandler);
 }
 
 } // namespace DBus

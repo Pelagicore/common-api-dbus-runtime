@@ -5,7 +5,7 @@ MOSTLYCLEANFILES =
 
 # Library interface (not package version!)
 LIBCOMMONAPI_DBUS_CURRENT=3
-LIBCOMMONAPI_DBUS_REVISION=0
+LIBCOMMONAPI_DBUS_REVISION=1
 LIBCOMMONAPI_DBUS_AGE=0
 
 AM_CPPFLAGS = \
@@ -50,6 +50,7 @@ libCommonAPI_DBus_la_SOURCES = \
         src/CommonAPI/DBus/DBusConnection.cpp \
         src/CommonAPI/DBus/DBusDaemonProxy.cpp \
         src/CommonAPI/DBus/DBusError.cpp \
+        src/CommonAPI/DBus/DBusFreedesktopPropertiesStub.cpp \
         src/CommonAPI/DBus/DBusFunctionalHash.cpp \
         src/CommonAPI/DBus/DBusInputStream.cpp \
         src/CommonAPI/DBus/DBusMainLoopContext.cpp \
@@ -90,6 +91,7 @@ CommonAPI_DBus_include_HEADERS = \
         src/CommonAPI/DBus/DBusDaemonProxy.h \
         src/CommonAPI/DBus/DBusError.h \
         src/CommonAPI/DBus/DBusEvent.h \
+        src/CommonAPI/DBus/DBusFreedesktopPropertiesStub.h \
         src/CommonAPI/DBus/DBusFunctionalHash.h \
         src/CommonAPI/DBus/DBusHelper.h \
         src/CommonAPI/DBus/DBusInputStream.h \
@@ -121,6 +123,9 @@ CommonAPI_DBus_include_HEADERS = \
 pkgconfigdir = ${libdir}/pkgconfig
 pkgconfig_DATA = CommonAPI-DBus.pc
 
+cmakedir = $(prefix)/lib/cmake/CommonAPIDBusCodeGen
+cmake_DATA = CommonAPIDBusCodeGenConfig.cmake
+
 # ------------------------------------------------------------------------------
 if ENABLE_TESTS
 
@@ -149,8 +154,18 @@ TestInterfaceDBusSources = \
         src/test/commonapi/tests/TestInterfaceDBusStubAdapter.cpp \
         src/test/fake/legacy/service/LegacyInterfaceDBusProxy.cpp
 
+FreedesktopPropertiesDBusSources = \
+        ${TestInterfaceSources} \
+        src/test/commonapi/tests/TestFreedesktopInterfaceDBusProxy.cpp \
+        src/test/commonapi/tests/TestFreedesktopInterfaceDBusStubAdapter.cpp \
+        src/test/commonapi/tests/TestFreedesktopInterfaceStubDefault.cpp \
+        src/test/commonapi/tests/TestFreedesktopDerivedInterfaceDBusProxy.cpp \
+        src/test/commonapi/tests/TestFreedesktopDerivedInterfaceDBusStubAdapter.cpp \
+        src/test/commonapi/tests/TestFreedesktopDerivedInterfaceStubDefault.cpp        
+
 ManagedSources = \
         src/test/commonapi/tests/managed/LeafInterfaceStubDefault.cpp \
+        src/test/commonapi/tests/managed/BranchInterfaceStubDefault.cpp \
         src/test/commonapi/tests/managed/RootInterfaceStubDefault.cpp \
         src/test/commonapi/tests/managed/SecondRootStubDefault.cpp
 
@@ -160,9 +175,15 @@ ManagedDBusSources = \
         src/test/commonapi/tests/managed/RootInterfaceDBusStubAdapter.cpp \
         src/test/commonapi/tests/managed/LeafInterfaceDBusProxy.cpp \
         src/test/commonapi/tests/managed/LeafInterfaceDBusStubAdapter.cpp \
+        src/test/commonapi/tests/managed/BranchInterfaceDBusProxy.cpp \
+        src/test/commonapi/tests/managed/BranchInterfaceDBusStubAdapter.cpp \
         src/test/commonapi/tests/managed/SecondRootDBusProxy.cpp \
         src/test/commonapi/tests/managed/SecondRootDBusStubAdapter.cpp
 
+ExtendedInterfaceSources = \
+        src/test/commonapi/tests/ExtendedInterfaceDBusProxy.cpp \
+        src/test/commonapi/tests/ExtendedInterfaceDBusStubAdapter.cpp \
+        src/test/commonapi/tests/ExtendedInterfaceStubDefault.cpp
 
 lib_LTLIBRARIES += libDBusGen-TestInterface.la
 libDBusGen_TestInterface_la_SOURCES = \
@@ -209,8 +230,10 @@ check_PROGRAMS = \
         DBusMultipleConnectionTest \
         DBusServicePublisherTest \
         DBusClientIdTest \
-        DBusSelectiveBroadcastTest \
-        DBusPolymorphicTest
+        DBusBroadcastTest \
+        DBusPolymorphicTest \
+        DBusLoadTest \
+        DBusFreedesktopPropertiesTest
 
 noinst_PROGRAMS = ${check_PROGRAMS}
 TESTS = ${check_PROGRAMS}
@@ -308,10 +331,18 @@ DBusMultipleConnectionTest_LDADD = ${LDADD_FOR_GTEST}
 
 DBusProxyTest_SOURCES = \
         src/test/DBusProxyTest.cpp \
-        ${TestInterfaceDBusSources}
+        ${TestInterfaceDBusSources} \
+        ${ExtendedInterfaceSources}
 DBusProxyTest_CPPFLAGS = ${AM_CPPFLAGS} ${GTEST_CPPFLAGS}
 DBusProxyTest_CXXFLAGS = ${GTEST_CXXFLAGS}
 DBusProxyTest_LDADD = ${LDADD_FOR_GTEST}
+
+DBusFreedesktopPropertiesTest_SOURCES = \
+        src/test/DBusFreedesktopPropertiesTest.cpp \
+        ${FreedesktopPropertiesDBusSources}
+DBusFreedesktopPropertiesTest_CPPFLAGS = ${AM_CPPFLAGS} ${GTEST_CPPFLAGS}
+DBusFreedesktopPropertiesTest_CXXFLAGS = ${GTEST_CXXFLAGS}
+DBusFreedesktopPropertiesTest_LDADD = ${LDADD_FOR_GTEST}
 
 DBusServicePublisherTest_SOURCES = \
         src/test/DBusServicePublisherTest.cpp \
@@ -371,12 +402,12 @@ DBusClientIdTest_CPPFLAGS = ${AM_CPPFLAGS} ${GTEST_CPPFLAGS}
 DBusClientIdTest_CXXFLAGS = ${GTEST_CXXFLAGS}
 DBusClientIdTest_LDADD = ${LDADD_FOR_GTEST}
 
-DBusSelectiveBroadcastTest_SOURCES =  \
+DBusBroadcastTest_SOURCES =  \
         ${TestInterfaceDBusSources} \
-        src/test/DBusSelectiveBroadcastTest.cpp
-DBusSelectiveBroadcastTest_CPPFLAGS = ${AM_CPPFLAGS} ${GTEST_CPPFLAGS}
-DBusSelectiveBroadcastTest_CXXFLAGS = ${GTEST_CXXFLAGS}
-DBusSelectiveBroadcastTest_LDADD = ${LDADD_FOR_GTEST}
+        src/test/DBusBroadcastTest.cpp
+DBusBroadcastTest_CPPFLAGS = ${AM_CPPFLAGS} ${GTEST_CPPFLAGS}
+DBusBroadcastTest_CXXFLAGS = ${GTEST_CXXFLAGS}
+DBusBroadcastTest_LDADD = ${LDADD_FOR_GTEST}
 
 DBusPolymorphicTest_SOURCES =  \
         ${TestInterfaceDBusSources} \
@@ -384,6 +415,13 @@ DBusPolymorphicTest_SOURCES =  \
 DBusPolymorphicTest_CPPFLAGS = ${AM_CPPFLAGS} ${GTEST_CPPFLAGS}
 DBusPolymorphicTest_CXXFLAGS = ${GTEST_CXXFLAGS}
 DBusPolymorphicTest_LDADD = ${LDADD_FOR_GTEST}
+
+DBusLoadTest_SOURCES = \
+        src/test/DBusLoadTest.cpp \
+        ${TestInterfaceDBusSources}
+DBusLoadTest_CPPFLAGS = ${AM_CPPFLAGS} ${GTEST_CPPFLAGS}
+DBusLoadTest_CXXFLAGS = ${GTEST_CXXFLAGS}
+DBusLoadTest_LDADD = ${LDADD_FOR_GTEST}
 
 endif
 

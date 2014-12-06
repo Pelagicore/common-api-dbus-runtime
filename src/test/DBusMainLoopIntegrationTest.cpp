@@ -17,8 +17,9 @@
 #include <utility>
 #include <tuple>
 #include <type_traits>
+#ifndef WIN32
 #include <glib.h>
-
+#endif
 #include <CommonAPI/CommonAPI.h>
 
 #define COMMONAPI_INTERNAL_COMPILATION
@@ -262,7 +263,6 @@ TEST_F(DBusMainLoopTest, ProxyAndServiceInSameDemoMainloopCanCommunicate) {
 
     uint32_t uint32Value = 42;
     std::string stringValue = "Hai :)";
-    bool running = true;
 
     std::future<CommonAPI::CallStatus> futureStatus = proxy->testVoidPredefinedTypeMethodAsync(
                     uint32Value,
@@ -312,7 +312,7 @@ TEST_F(DBusMainLoopTest, DemoMainloopClientsHandleNonavailableServices) {
 }
 
 //##################################################################################################
-
+#ifndef WIN32
 class GDispatchWrapper: public GSource {
  public:
     GDispatchWrapper(CommonAPI::DispatchSource* dispatchSource): dispatchSource_(dispatchSource) {}
@@ -439,7 +439,7 @@ class DBusInGLibMainLoopTest: public ::testing::Test {
         for (auto dependentSourceIterator = dependentSources.begin();
                 dependentSourceIterator != dependentSources.end();
                 dependentSourceIterator++) {
-            GSource* gDispatchSource = g_source_new(&standardGLibSourceCallbackFuncs, sizeof(GDispatchWrapper));
+            g_source_new(&standardGLibSourceCallbackFuncs, sizeof(GDispatchWrapper));
             GSource* gSource = gSourceMappings.find(*dependentSourceIterator)->second;
             g_source_destroy(gSource);
             g_source_unref(gSource);
@@ -574,9 +574,11 @@ TEST_F(DBusInGLibMainLoopTest, ProxyAndServiceInSameGlibMainloopCanCommunicate) 
 
     servicePublisher_->unregisterService(testAddress7);
 }
+#endif
 
-
+#ifndef WIN32
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
+#endif

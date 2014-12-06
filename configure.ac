@@ -1,6 +1,6 @@
 AC_PREREQ([2.61])
-AC_INIT([GENIVI Common API DBus C++ Library],
-        [2.1.4],
+AC_INIT([GENIVI IPC Common API DBus C++],
+        [2.1.6],
         [],
         [CommonAPI-DBus])
 
@@ -24,6 +24,11 @@ AM_MAINTAINER_MODE
 COMMONAPI_API_HEADER_VERSION="2.1"
 AC_SUBST(COMMONAPI_API_HEADER_VERSION)
 
+AC_ARG_WITH([loose-version-check], [AS_HELP_STRING([--with-loose-version-check], [if loose-version-check is set the CommonAPI will only be checked for major and minor version])],
+    [LOOSE_VERSION_CHECK=1], [])
+
+AS_IF([test -z "${CXXFLAGS}"], [CXXFLAGS='-O0'], [])
+
 AC_PROG_CXX
 AC_LANG([C++])
 AX_CXX_COMPILE_STDCXX_11([noext])
@@ -32,9 +37,15 @@ AC_ARG_VAR([GTEST_CONFIG], [The exact path of Google Test's 'gtest-config' scrip
 
 LT_PREREQ(2.2)
 LT_INIT
-
 PKG_PROG_PKG_CONFIG
-PKG_CHECK_MODULES(COMMONAPI, [CommonAPI = 2.1.4])
+AS_IF([test ${LOOSE_VERSION_CHECK} = 1],
+    [
+        PKG_CHECK_MODULES(COMMONAPI, [CommonAPI >= 2.1 CommonAPI < 2.2])
+    ],
+    [
+        PKG_CHECK_MODULES(COMMONAPI, [CommonAPI = 2.1.6])
+    ]
+)
 PKG_CHECK_MODULES(DBUS, [dbus-1 >= 1.4.6])
 PKG_CHECK_MODULES(GLIB, [glib-2.0],
         [],
@@ -70,6 +81,17 @@ AS_IF([test -f "${GTEST_CONFIG}"],
       []
 )
 
+AS_IF([${TESTS_CAN_BE_EXECUTED}],
+       [],
+       [[GTEST_CPPFLAGS=""]
+       [GTEST_CXXFLAGS=""]
+       [GTEST_LDFLAGS=""]
+       [GTEST_LIBS=""]
+       [GTEST_VERSION=""]
+       [GTEST_ERROR="
+        WARNING: No glib found, tests will not be compiled! Please install the glib package!
+       "]])
+
 AM_CONDITIONAL(ENABLE_TESTS, [test -f "${GTEST_CONFIG}" && ${TESTS_CAN_BE_EXECUTED}])
 
 # Doxygen support
@@ -85,7 +107,7 @@ DX_INIT_DOXYGEN(${PACKAGE_NAME}, doxygen.cfg, doc)
 
 AC_MSG_RESULT([
         $PACKAGE_NAME v$VERSION
-
+        ${GTEST_ERROR}
         enable docs:       ${ENABLE_DOCS}
 
         COMMONAPI_CFLAGS:  ${COMMONAPI_CFLAGS}

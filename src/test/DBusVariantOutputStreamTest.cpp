@@ -162,7 +162,7 @@ TEST_F(VariantOutputStreamTest, CanWriteVariantInArray) {
     std::vector<InnerVar> inVector;
     std::vector<InnerVar> outVector;
 
-    for (int i = 0; i < numOfElements; i++) {
+    for (unsigned int i = 0; i < numOfElements; i++) {
         inVector.push_back(InnerVar(fromInt));
     }
 
@@ -188,7 +188,7 @@ TEST_F(VariantOutputStreamTest, CanWriteArrayInVariant) {
 
     std::vector<int> inVector;
     int fromInt = 14132;
-    for (int i = 0; i < numOfElements; i++) {
+    for (unsigned int i = 0; i < numOfElements; i++) {
         inVector.push_back(fromInt);
     }
 
@@ -271,7 +271,7 @@ TEST_F(VariantOutputStreamTest, CanWriteVariantInArrayInVariant) {
 
     VarVector inVector;
     int fromInt = 14132;
-    for (int i = 0; i < numOfElements; i++) {
+    for (unsigned int i = 0; i < numOfElements; i++) {
         inVector.push_back(InnerVar(fromInt));
     }
 
@@ -292,7 +292,9 @@ TEST_F(VariantOutputStreamTest, CanWriteVariantInArrayInVariant) {
     EXPECT_TRUE(inVariant == outVariant);
 }
 
+#ifndef WIN32
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
+#endif

@@ -10,7 +10,6 @@
 #include "DBusProxyAsyncCallbackHandler.h"
 #include "DBusUtils.h"
 
-#include <iostream>
 #include <iterator>
 
 namespace CommonAPI {
@@ -19,6 +18,8 @@ namespace DBus {
 DBusServiceRegistry::DBusServiceRegistry(std::shared_ptr<DBusProxyConnection> dbusProxyConnection) :
                 dbusDaemonProxy_(std::make_shared<CommonAPI::DBus::DBusDaemonProxy>(dbusProxyConnection)),
                 initialized_(false),
+                servicesToResolve(0),
+                objectPathsToResolve(0),
                 notificationThread_() {
 }
 
@@ -33,10 +34,6 @@ DBusServiceRegistry::~DBusServiceRegistry() {
     // notify only listeners of resolved services (online > offline)
     for (auto& dbusServiceListenersIterator : dbusServiceListenersMap) {
         auto& dbusServiceListenersRecord = dbusServiceListenersIterator.second;
-
-        // fulfill all open promises
-        std::promise<DBusRecordState> promiseOnResolve = std::move(dbusServiceListenersRecord.promiseOnResolve);
-        promiseOnResolve.set_value(DBusRecordState::NOT_AVAILABLE);
 
         if (dbusServiceListenersRecord.uniqueBusNameState == DBusRecordState::RESOLVED) {
             onDBusServiceNotAvailable(dbusServiceListenersRecord);
@@ -58,7 +55,7 @@ DBusServiceRegistry::~DBusServiceRegistry() {
 void DBusServiceRegistry::init() {
     dbusDaemonProxyStatusEventSubscription_ =
                     dbusDaemonProxy_->getProxyStatusEvent().subscribeCancellableListener(
-                        std::bind(&DBusServiceRegistry::onDBusDaemonProxyStatusEvent, shared_from_this(), std::placeholders::_1));
+                        std::bind(&DBusServiceRegistry::onDBusDaemonProxyStatusEvent, this, std::placeholders::_1));
 
     dbusDaemonProxyNameOwnerChangedEventSubscription_ =
                     dbusDaemonProxy_->getNameOwnerChangedEvent().subscribeCancellableListener(
@@ -125,9 +122,9 @@ DBusServiceRegistry::DBusServiceSubscription DBusServiceRegistry::subscribeAvail
                 break;
             default:
                 availabilityStatus = AvailabilityStatus::UNKNOWN;
+                break;
         }
     }
-
 
     if (availabilityStatus != AvailabilityStatus::UNKNOWN) {
         notificationThread_ = std::this_thread::get_id();
@@ -217,12 +214,12 @@ bool DBusServiceRegistry::isServiceInstanceAlive(const std::string& dbusInterfac
 
     findCachedDbusService(dbusServiceName, &dbusUniqueNameRecord);
 
-    if(dbusUniqueNameRecord != NULL) {
+    if (dbusUniqueNameRecord != NULL) {
         uniqueName = dbusUniqueNameRecord->uniqueName;
         uniqueNameFound = true;
     }
 
-    if(!uniqueNameFound) {
+    if (!uniqueNameFound) {
         DBusServiceListenersRecord dbusServiceListenersRecord;
         dbusServiceListenersRecord.uniqueBusNameState = DBusRecordState::RESOLVING;
 
@@ -230,7 +227,8 @@ bool DBusServiceRegistry::isServiceInstanceAlive(const std::string& dbusInterfac
         std::unordered_map<std::string, DBusServiceListenersRecord>::value_type value(dbusServiceName, std::move(dbusServiceListenersRecord));
         auto insertedDbusServiceListenerRecord = dbusServiceListenersMap.insert(std::move(value));
 
-        if(insertedDbusServiceListenerRecord.second) { // if dbusServiceListenerRecord was inserted, start resolving
+        // start resolving only if dbusServiceListenerRecord was inserted, i.e. it is a new service that appeared
+        if (insertedDbusServiceListenerRecord.second) {
             resolveDBusServiceName(dbusServiceName, dbusServiceListenersMap[dbusServiceName]);
         }
 
@@ -272,13 +270,12 @@ bool DBusServiceRegistry::isServiceInstanceAlive(const std::string& dbusInterfac
 
     assert(dbusUniqueNameRecord != NULL);
 
-    auto* dbusObjectPathsCache = &(dbusUniqueNameRecord->dbusObjectPathsCache);
-    auto dbusObjectPathCacheIterator = dbusObjectPathsCache->find(dbusObjectPath);
+    auto& dbusObjectPathsCache = dbusUniqueNameRecord->dbusObjectPathsCache;
+    auto dbusObjectPathCacheIterator = dbusObjectPathsCache.find(dbusObjectPath);
 
     DBusObjectPathCache* dbusObjectPathCache = NULL;
 
-
-    if(dbusObjectPathCacheIterator != dbusObjectPathsCache->end()) {
+    if(dbusObjectPathCacheIterator != dbusObjectPathsCache.end()) {
         dbusObjectPathCache = &(dbusObjectPathCacheIterator->second);
     }
     else {
@@ -287,12 +284,10 @@ bool DBusServiceRegistry::isServiceInstanceAlive(const std::string& dbusInterfac
         newDbusObjectPathCache.state = DBusRecordState::RESOLVING;
 
         dbusServicesMutex_.lock();
-        //std::unordered_map<std::string, DBusObjectPathCache>::value_type value(dbusObjectPath, std::move(newDbusObjectPathCache));
-        //auto dbusObjectPathCacheInserted = dbusObjectPathsCache->insert(std::move({dbusObjectPath, std::move(newDbusObjectPathCache)}));
-        auto dbusObjectPathCacheInserted =
-                        dbusObjectPathsCache->insert(std::make_pair(dbusObjectPath, std::move(newDbusObjectPathCache)));
 
-        dbusObjectPathCacheIterator = dbusObjectPathsCache->find(dbusObjectPath);
+        dbusObjectPathsCache.insert(std::make_pair(dbusObjectPath, std::move(newDbusObjectPathCache)));
+
+        dbusObjectPathCacheIterator = dbusObjectPathsCache.find(dbusObjectPath);
 
         dbusObjectPathCache = &(dbusObjectPathCacheIterator->second);
 
@@ -472,10 +467,7 @@ SubscriptionStatus DBusServiceRegistry::onSignalDBusMessage(const DBusMessage& d
 
     dbusInputStream >> dbusObjectPath;
 
-    bool added = false;
-
     if (dbusMessage.hasMemberName("InterfacesAdded")) {
-        added = true;
         dbusInterfaceNameState = DBusRecordState::AVAILABLE;
 
         typedef std::unordered_map<std::string, bool> DBusPropertiesChangedDict;
@@ -518,28 +510,7 @@ SubscriptionStatus DBusServiceRegistry::onSignalDBusMessage(const DBusMessage& d
 
     auto& dbusUniqueNameRecord = dbusServiceUniqueNameIterator->second;
 
-    //auto dbusObjectPathIterator = dbusUniqueNameRecord.dbusObjectPathsCache.find(dbusObjectPath);
-    //const bool isDBusObjectPathFound = (dbusObjectPathIterator != dbusUniqueNameRecord.dbusObjectPathsCache.end());
-
-    /*
-    if (!isDBusObjectPathFound) {
-        return SubscriptionStatus::RETAIN;
-    }
-    */
-
     DBusObjectPathCache& dbusObjectPathRecord = dbusUniqueNameRecord.dbusObjectPathsCache[dbusObjectPath];
-/*
-    if (isDBusObjectPathFound) {
-        dbusObjectPathRecord = &dbusObjectPathIterator->second;
-    }
-    else
-    {
-        DBusObjectPathCache dbusObjectPathRecord;
-        auto insertionResult = dbusUniqueNameRecord.dbusObjectPathsCache.insert(std::make_pair(dbusObjectPath, std::move(dbusObjectPath)));
-        auto objectPathCacheIterator = insertionResult.first;
-        dbusObjectPathRecord = &(objectPathCacheIterator->second);
-    }
-*/
 
     if (dbusObjectPathRecord.state != DBusRecordState::RESOLVED) {
         return SubscriptionStatus::RETAIN;
@@ -738,8 +709,7 @@ bool DBusServiceRegistry::introspectDBusObjectPath(const std::string& dbusServic
 
         dbusConnection->sendDBusMessageWithReplyAsync(
             dbusMessageCall,
-            DBusProxyAsyncCallbackHandler<std::string>::create(instrospectAsyncCallback),
-            2000);
+            DBusProxyAsyncCallbackHandler<std::string>::create(instrospectAsyncCallback));
 
         isResolvingInProgress = true;
     }
@@ -752,7 +722,7 @@ bool DBusServiceRegistry::introspectDBusObjectPath(const std::string& dbusServic
  *
  * This is the other end of checking if a dbus object path is available.
  * On success it'll extract all interface names from the xml data response.
- * Special interfaces that start with org.freedesktop will be ignored.
+ * Special interfaces that start with "org.freedesktop.DBus." will be ignored.
  *
  * @param status
  * @param xmlData
@@ -778,7 +748,7 @@ void DBusServiceRegistry::onIntrospectCallback(const CallStatus& callStatus,
         return;
     }
 
-    auto& dbusUniqueNameRecord = dbusServiceUniqueNameIterator->second;
+    DBusUniqueNameRecord& dbusUniqueNameRecord = dbusServiceUniqueNameIterator->second;
     auto dbusObjectPathIterator = dbusUniqueNameRecord.dbusObjectPathsCache.find(dbusObjectPath);
     const bool isDBusObjectPathFound = (dbusObjectPathIterator != dbusUniqueNameRecord.dbusObjectPathsCache.end());
 
@@ -786,7 +756,7 @@ void DBusServiceRegistry::onIntrospectCallback(const CallStatus& callStatus,
         return;
     }
 
-    auto& dbusObjectPathRecord = dbusObjectPathIterator->second;
+    DBusObjectPathCache& dbusObjectPathRecord = dbusObjectPathIterator->second;
 
     dbusObjectPathRecord.state = DBusRecordState::RESOLVED;
     dbusObjectPathRecord.promiseOnResolve.set_value(dbusObjectPathRecord.state);
@@ -873,7 +843,7 @@ void DBusServiceRegistry::parseIntrospectionData(const std::string& xmlData,
 
     parseIntrospectionNode(rootNode, rootObjectPath, rootObjectPath, dbusServiceUniqueName);
 
-    DBusUniqueNameRecord& dbusUniqueNameRecord = dbusUniqueNamesMap_[dbusServiceUniqueName];
+    dbusUniqueNamesMap_[dbusServiceUniqueName];
     dbusServicesMutex_.unlock();
 }
 
@@ -981,32 +951,12 @@ void DBusServiceRegistry::onDBusServiceNotAvailable(DBusServiceListenersRecord& 
 
     const DBusUniqueNamesMapIterator dbusUniqueNameRecordIterator = dbusUniqueNamesMap_.find(dbusServiceListenersRecord.uniqueBusName);
 
-    // fulfill all open promises on object path resolution
-    if(dbusUniqueNameRecordIterator != dbusUniqueNamesMap_.end()) {
-        DBusUniqueNameRecord& dbusUniqueNameRecord = dbusUniqueNameRecordIterator->second;
-        for (auto dbusObjectPathsCacheIterator = dbusUniqueNameRecord.dbusObjectPathsCache.begin();
-                        dbusObjectPathsCacheIterator != dbusUniqueNameRecord.dbusObjectPathsCache.end();
-                        dbusObjectPathsCacheIterator++) {
-
-            auto& dbusObjectPathsCache = dbusObjectPathsCacheIterator->second;
-
-            std::promise<DBusRecordState> promiseOnResolve = std::move(dbusObjectPathsCache.promiseOnResolve);
-
-            try {
-                std::future<DBusRecordState> futureOnResolve = promiseOnResolve.get_future();
-                if(!futureOnResolve.valid()) {
-                    promiseOnResolve.set_value(DBusRecordState::NOT_AVAILABLE);
-                }
-            } catch (std::future_error& e) { }
-
-        }
-
+    if (dbusUniqueNameRecordIterator != dbusUniqueNamesMap_.end()) {
         removeUniqueName(dbusUniqueNameRecordIterator);
     }
 
     dbusServiceListenersRecord.uniqueBusName.clear();
     dbusServiceListenersRecord.uniqueBusNameState = DBusRecordState::NOT_AVAILABLE;
-
 
     for (auto dbusObjectPathListenersIterator = dbusServiceListenersRecord.dbusObjectPathListenersMap.begin();
                     dbusObjectPathListenersIterator != dbusServiceListenersRecord.dbusObjectPathListenersMap.end(); ) {
@@ -1029,14 +979,14 @@ void DBusServiceRegistry::notifyDBusServiceListeners(const DBusUniqueNameRecord&
                                                      const DBusRecordState& dbusInterfaceNamesState) {
     notificationThread_ = std::this_thread::get_id();
 
-    for (auto& dbusServiceName : dbusUniqueNameRecord.ownedBusNames) {
+    for (const std::string& dbusServiceName : dbusUniqueNameRecord.ownedBusNames) {
         auto dbusServiceListenersIterator = dbusServiceListenersMap.find(dbusServiceName);
 
         if(dbusServiceListenersIterator == dbusServiceListenersMap.end()) {
             continue;
         }
 
-        auto& dbusServiceListenersRecord = dbusServiceListenersIterator->second;
+        DBusServiceListenersRecord& dbusServiceListenersRecord = dbusServiceListenersIterator->second;
         if(dbusServiceListenersRecord.uniqueBusNameState != DBusRecordState::RESOLVED) {
             continue;
         }
@@ -1134,6 +1084,11 @@ void DBusServiceRegistry::notifyDBusInterfaceNameListeners(DBusInterfaceNameList
 }
 
 void DBusServiceRegistry::removeUniqueName(const DBusUniqueNamesMapIterator& dbusUniqueNamesIterator) {
+    const bool isSubscriptionCancelled = dbusDaemonProxy_->getDBusConnection()->removeObjectManagerSignalMemberHandler(
+                    dbusUniqueNamesIterator->first,
+                    this);
+    assert(isSubscriptionCancelled);
+
     for (auto dbusServiceNamesIterator = dbusUniqueNamesIterator->second.ownedBusNames.begin();
                     dbusServiceNamesIterator != dbusUniqueNamesIterator->second.ownedBusNames.end();
                     dbusServiceNamesIterator++) {

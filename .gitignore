@@ -7,6 +7,7 @@
 *.log
 *.o
 *.trs
+*~
 /.autotools
 /.cproject
 /.project
@@ -25,6 +26,9 @@
 /m4/libtool.m4
 /m4/lt*.m4
 
+/DBusBroadcastTest
+/DBusFreedesktopPropertiesTest
+/DBusLoadTest
 /DBusBenchmarkingTest
 /DBusCommunicationTest
 /DBusDaemonProxyTest
@@ -38,7 +42,6 @@
 /DBusVariantOutputStreamTest
 /DBusVariantTest
 /DBusAddressTranslatorTest
-/.pydevproject
 /DBusServiceRegistryTest
 /DBusClientIdTest
 /DBusConnectionTest
@@ -54,3 +57,7 @@
 /DBusClientIdTest
 /DBusSelectiveBroadcastTest
 /DBusManagedTest
+/DBusPolymorphicTest
+/DBusBroadcastTest
+/DBusFreedesktopPropertiesTest
+/DBusLoadTest

@@ -17,8 +17,8 @@ namespace DBus {
 
 DBusObjectManagerStub::DBusObjectManagerStub(const std::string& dbusObjectPath,
                                              const std::shared_ptr<DBusProxyConnection>& dbusConnection) :
-                dbusConnection_(dbusConnection),
-                dbusObjectPath_(dbusObjectPath) {
+                        dbusObjectPath_(dbusObjectPath),
+                        dbusConnection_(dbusConnection) {
     assert(!dbusObjectPath.empty());
     assert(dbusObjectPath[0] == '/');
     assert(dbusConnection);
@@ -186,6 +186,10 @@ bool DBusObjectManagerStub::emitInterfacesAddedSignal(std::shared_ptr<DBusStubAd
         dbusInterfacesAndPropertiesDict.insert({ getInterfaceName(), DBusPropertiesChangedDict() });
     }
 
+    if (dbusStubAdapter->hasFreedesktopProperties()) {
+        dbusInterfacesAndPropertiesDict.insert({ "org.freedesktop.DBus.Properties", DBusPropertiesChangedDict() });
+    }
+
     dbusOutputStream << dbusStubObjectPath;
     dbusOutputStream << dbusInterfacesAndPropertiesDict;
     dbusOutputStream.flush();
@@ -277,6 +281,19 @@ bool DBusObjectManagerStub::onInterfaceDBusMessage(const DBusMessage& dbusMessag
 
     const bool dbusMessageReplySent = dbusConnection->sendDBusMessage(dbusMessageReply);
     return dbusMessageReplySent;
+}
+
+
+const bool DBusObjectManagerStub::hasFreedesktopProperties() {
+    return false;
+}
+
+const std::string& DBusObjectManagerStub::getDBusObjectPath() const {
+    return dbusObjectPath_;
+}
+
+const char* DBusObjectManagerStub::getInterfaceName() {
+    return "org.freedesktop.DBus.ObjectManager";
 }
 
 } // namespace DBus
