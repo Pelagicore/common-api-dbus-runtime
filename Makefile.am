@@ -127,6 +127,9 @@ CommonAPI_DBus_include_HEADERS = \
 pkgconfigdir = ${libdir}/pkgconfig
 pkgconfig_DATA = CommonAPI-DBus.pc
 
+cmakedir = $(prefix)/lib/cmake/CommonAPIDBusCodeGen
+cmake_DATA = CommonAPIDBusCodeGenConfig.cmake
+
 # ------------------------------------------------------------------------------
 if ENABLE_TESTS
 
