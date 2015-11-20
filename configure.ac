@@ -4,12 +4,14 @@ AC_INIT([GENIVI IPC Common API DBus C++],
         [],
         [CommonAPI-DBus])
 
+AC_CONFIG_AUX_DIR([build-aux])
+AC_CONFIG_HEADERS([build-aux/config.h])
+
 AC_USE_SYSTEM_EXTENSIONS
 
 AC_CONFIG_MACRO_DIR([m4])
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
-AC_CONFIG_AUX_DIR([build-aux])
-AC_CONFIG_HEADERS([build-aux/config.h])
+
 AC_CONFIG_FILES([
         Makefile
         CommonAPI-DBus.pc
